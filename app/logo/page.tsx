@@ -6,21 +6,41 @@ export default function LogoPage() {
   const [primary, setPrimary] = useState('#0033cc');
   const [secondary, setSecondary] = useState('#ffcc00');
   const [img, setImg] = useState<string | null>(null);
+  const [err, setErr] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
     setImg(null);
+    setErr(null);
 
-    const res = await fetch('/api/logo', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ teamName, primary, secondary }),
-    });
-    const { url } = await res.json();
-    setImg(url);
-    setLoading(false);
+    try {
+      const res = await fetch('/api/logo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ teamName, primary, secondary }),
+      });
+
+      const text = await res.text();
+      let payload: { url?: string; error?: string };
+      try {
+        payload = JSON.parse(text);
+      } catch {
+        throw new Error(`Invalid JSON: ${text}`);
+      }
+
+      if (!res.ok || payload.error) {
+        throw new Error(payload.error || `API Error: ${res.status}`);
+      }
+
+      setImg(payload.url!);
+    } catch (e: any) {
+      console.error(e);
+      setErr(e.message);
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -43,7 +63,11 @@ export default function LogoPage() {
           </label>
           <label className="flex items-center">
             <span className="mr-2">Secondary</span>
-            <input type="color" value={secondary} onChange={e => setSecondary(e.target.value)} />
+            <input
+              type="color"
+              value={secondary}
+              onChange={e => setSecondary(e.target.value)}
+            />
           </label>
         </div>
 
@@ -55,6 +79,12 @@ export default function LogoPage() {
           {loading ? 'Generating…' : 'Generate'}
         </button>
       </form>
+
+      {err && (
+        <p className="mt-4 text-red-600">
+          <strong>Error:</strong> {err}
+        </p>
+      )}
 
       {img && (
         <div className="mt-8">

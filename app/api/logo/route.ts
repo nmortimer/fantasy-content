@@ -1,19 +1,38 @@
+// app/api/logo/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
 
 export async function POST(req: NextRequest) {
-  const { teamName, primary, secondary } = await req.json();
+  try {
+    const { teamName, primary, secondary } = await req.json();
 
-  const prompt = `Sports team logo for ${teamName}, colors ${primary} and ${secondary}, modern flat vector style`;
+    if (!teamName || !primary || !secondary) {
+      return NextResponse.json(
+        { error: 'Missing teamName, primary or secondary color' },
+        { status: 400 }
+      );
+    }
 
-  const img = await openai.images.generate({
-    model: 'dall-e-3',
-    prompt,
-    n: 1,
-    size: '512x512',
-  });
+    const prompt = `Sports team logo for ${teamName}, colors ${primary} and ${secondary}, modern flat vector style`;
 
-  return NextResponse.json({ url: img.data[0].url });
+    const resp = await openai.images.generate({
+      model: 'dall-e-3',
+      prompt,
+      size: '1024x1024',
+      n: 1,
+    });
+
+    const url = resp.data[0].url;
+    if (!url) throw new Error('No URL returned from OpenAI');
+
+    return NextResponse.json({ url });
+  } catch (err: any) {
+    console.error('[/api/logo] error:', err);
+    return NextResponse.json(
+      { error: err.message || 'Unknown server error' },
+      { status: 500 }
+    );
+  }
 }

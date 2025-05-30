@@ -1,42 +1,31 @@
+// app/logo/page.tsx
 'use client';
 import { useState } from 'react';
 
 export default function LogoPage() {
   const [teamName, setTeamName] = useState('');
-  const [primary, setPrimary] = useState('#0033cc');
-  const [secondary, setSecondary] = useState('#ffcc00');
-  const [img, setImg] = useState<string | null>(null);
+  const [imgUrl, setImgUrl] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
-    setImg(null);
+    setImgUrl(null);
     setErr(null);
 
     try {
       const res = await fetch('/api/logo', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ teamName, primary, secondary }),
+        body: JSON.stringify({ teamName }),
       });
-
-      const text = await res.text();
-      let payload: { url?: string; error?: string };
-      try {
-        payload = JSON.parse(text);
-      } catch {
-        throw new Error(`Invalid JSON: ${text}`);
-      }
-
+      const payload = await res.json();
       if (!res.ok || payload.error) {
-        throw new Error(payload.error || `API Error: ${res.status}`);
+        throw new Error(payload.error || `Status ${res.status}`);
       }
-
-      setImg(payload.url!);
+      setImgUrl(payload.url);
     } catch (e: any) {
-      console.error(e);
       setErr(e.message);
     } finally {
       setLoading(false);
@@ -44,9 +33,8 @@ export default function LogoPage() {
   }
 
   return (
-    <main className="p-8 max-w-xl mx-auto">
-      <h1 className="text-3xl font-bold mb-6">Generate Team Logo</h1>
-
+    <main className="p-8 max-w-lg mx-auto">
+      <h1 className="text-2xl font-bold mb-4">Generate Team Logo</h1>
       <form onSubmit={handleSubmit} className="space-y-4">
         <input
           required
@@ -55,41 +43,24 @@ export default function LogoPage() {
           placeholder="Team Name"
           className="w-full border p-2 rounded"
         />
-
-        <div className="flex space-x-4">
-          <label className="flex items-center">
-            <span className="mr-2">Primary</span>
-            <input type="color" value={primary} onChange={e => setPrimary(e.target.value)} />
-          </label>
-          <label className="flex items-center">
-            <span className="mr-2">Secondary</span>
-            <input
-              type="color"
-              value={secondary}
-              onChange={e => setSecondary(e.target.value)}
-            />
-          </label>
-        </div>
-
         <button
           type="submit"
           disabled={loading}
           className="bg-blue-600 text-white px-4 py-2 rounded"
         >
-          {loading ? 'Generating…' : 'Generate'}
+          {loading ? 'Generating…' : 'Generate Logo'}
         </button>
       </form>
 
-      {err && (
-        <p className="mt-4 text-red-600">
-          <strong>Error:</strong> {err}
-        </p>
-      )}
+      {err && <p className="mt-4 text-red-600">Error: {err}</p>}
 
-      {img && (
-        <div className="mt-8">
-          <h2 className="font-semibold mb-2">Result</h2>
-          <img src={img} alt="team logo" className="w-64 h-64 object-contain border" />
+      {imgUrl && (
+        <div className="mt-6">
+          <img
+            src={imgUrl}
+            alt="Generated Logo"
+            className="w-64 h-64 object-contain border"
+          />
         </div>
       )}
     </main>

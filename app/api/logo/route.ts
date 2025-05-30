@@ -1,4 +1,3 @@
-// app/api/logo/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
 import { promises as fs } from 'fs';
@@ -14,7 +13,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Missing teamName' }, { status: 400 });
     }
 
-    // 1) GPT picks mascot + two colors
+    // 1) GPT selects mascot + colors
     const chat = await openai.chat.completions.create({
       model: 'gpt-3.5-turbo',
       temperature: 0.85,
@@ -41,7 +40,7 @@ export async function POST(req: NextRequest) {
       def.mascot = teamName.split(' ')[0];
     }
 
-    // 2) Build DALL·E prompt
+    // 2) Build image prompt
     const prompt = [
       `A flat-vector, text-free icon of a stylized ${def.mascot.toLowerCase()} mascot head`,
       `in primary ${def.primary} and secondary ${def.secondary}.`,
@@ -49,24 +48,30 @@ export async function POST(req: NextRequest) {
       'in the style of modern fantasy football logos.'
     ].join(' ');
 
-    // 3) Call DALL·E
+    // 3) Generate image
     const img = await openai.images.generate({
       model: 'dall-e-3',
       prompt,
       n: 1,
       size: '1024x1024',
     });
-    const url = img.data![0].url!;
-    if (!url) throw new Error('No URL returned');
 
-    // 4) Persist URL
+    const url = img.data![0].url!;
+    if (!url) throw new Error('No image URL returned');
+
+    // 4) Store result
     const storeFile = await fs.readFile(STORE, 'utf-8');
-    const store = JSON.parse(storeFile) as Record<string,string>;
+    const store = JSON.parse(storeFile) as Record<string, string>;
     store[teamName] = url;
     await fs.writeFile(STORE, JSON.stringify(store, null, 2));
 
-    // 5) Return it
-    return NextResponse.json({ url });
+    // 5) Return
+    return NextResponse.json({
+      url,
+      mascot: def.mascot,
+      primary: def.primary,
+      secondary: def.secondary,
+    });
   } catch (err: any) {
     console.error('[/api/logo] error:', err);
     return NextResponse.json(
